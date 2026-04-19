@@ -47,13 +47,29 @@ pipeline {
       }
     }
 
+    stage('SonarQube analysis') {
+      steps {
+        withSonarQubeEnv(credentialsId: 'sonar_server', installationName: 'servidor_sonarqube') {
+          sh 'mvn sonar:sonar'
+        }
+      }
+    }
+
+    stage('Quality Gate') {
+      steps {
+        timeout(time: 1, unit: 'HOURS') {
+          waitForQualityGate abortPipeline: true
+        }
+      }
+    }
+
     stage('Documentation') {
       steps {
         sh 'mvn javadoc:javadoc javadoc:aggregate'
       }
       post {
         success {
-          step $class: 'JavadocArchiver', javadocDir: 'target/site/apidocs', keepAll: false
+          step([$class: 'JavadocArchiver', javadocDir: 'target/site/apidocs', keepAll: false])
           publishHTML(target: [
             reportName: 'Maven Site',
             reportDir: 'target/site',
